@@ -105,3 +105,13 @@ func UseEnv(prefix string) Option {
 		f.envPrefix = prefix
 	}
 }
+
+// OmitSetValues allows to save preset values
+//
+//	someCfg.Field = wantedPresetValue
+//	fig.Load(&someCfg, fig.OmitSetValues())
+// func OmitSetValues() Option {
+// 	return func(f *fig) {
+// 		f.overrideValues = false
+// 	}
+// }

@@ -160,6 +160,7 @@ func (f *fig) decodeMap(m map[string]interface{}, result interface{}) error {
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToTimeHookFunc(f.timeLayout),
 			stringToRegexpHookFunc(),
+			//overrideValues(f.overrideValues),
 		),
 	})
 	if err != nil {
@@ -182,6 +183,50 @@ func stringToRegexpHookFunc() mapstructure.DecodeHookFunc {
 		}
 		//nolint:forcetypeassert
 		return regexp.Compile(data.(string))
+	}
+}
+
+// function changes data source so that it does not override already set data
+func overrideValues(nametag, omittag string) mapstructure.DecodeHookFunc {
+	return func(f reflect.Value, t reflect.Value) (interface{}, error) {
+		if t.Kind() != reflect.Struct {
+			return f, nil
+		}
+		if f.Kind() != reflect.Map {
+			return nil, fmt.Errorf("map as a source of data is required")
+		}
+		type field struct {
+			f reflect.StructField
+			v reflect.Value
+		}
+		fs := make([]field, 0)
+		for i := 0; i < t.NumField(); i++ {
+			fi := t.Field(i)
+			if fi.Kind() == reflect.Struct {
+				continue
+			}
+			fs = append(fs, field{f: t.Type().Field(i), v: fi})
+		}
+
+		for _, fi := range fs {
+			field, fieldVal := fi.f, fi.v
+			if !strings.Contains(string(fi.f.Tag), omittag) {
+				continue
+			}
+			fname := field.Name
+			tagName := field.Tag.Get(nametag)
+
+			if tagName != "" {
+				fname = tagName
+			}
+			mapKeyV := reflect.ValueOf(fname)
+			mapV := f.MapIndex(mapKeyV)
+			if !mapV.IsValid() {
+				return nil, fmt.Errorf("failed to find value in config")
+			}
+			mapV.Set(fieldVal)
+		}
+		return f, nil
 	}
 }
 

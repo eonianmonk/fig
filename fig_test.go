@@ -1210,6 +1210,29 @@ func Test_fig_setSlice(t *testing.T) {
 	})
 }
 
+func Test_fig_omitIfSet(t *testing.T) {
+
+	t.Run("Presetting field value", func(t *testing.T) {
+
+		cfg := Pod{}
+		cfg.Kind = "DefinitelyNotPod"
+		cfg.Metadata.Name = "not_redis"
+		cfg.Metadata.Master = false
+		mpu := 0.03125
+		cfg.Metadata.MaxPercentUtil = &mpu
+
+		err := Load(&cfg, File("pod2.yaml"), Dirs(filepath.Join("testdata", "valid"))) // OmitSetValues())
+		if err != nil {
+			t.Fatalf("failed to load %s file: %+v", "pod.yaml", err)
+		}
+
+		if cfg.Metadata.Name != "not_redis" || cfg.Kind != "DefinitelyNotPod" ||
+			cfg.Metadata.Master != false || *cfg.Metadata.MaxPercentUtil != 0.3125 {
+			t.Fatal("Failed to save preset config value")
+		}
+	})
+}
+
 func setenv(t *testing.T, key, value string) {
 	t.Helper()
 	t.Setenv(key, value)
